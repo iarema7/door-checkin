@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10211c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}</style>
+<title>Door Check-in</title>
+<style>
+/* Layout: one thumb-driven screen; verdict on top, keypad under the thumb, hall-lighting dark look. */
+:root{
+  color-scheme:dark;
+  --night:#10211c;--panel:#18302a;--raise:#21403a;--line:#315249;
+  --cream:#f6eddc;--muted:#a9bdb3;--ok:#35c98c;--warn:#f2ad33;--bad:#e3314f;
+  --tred:#e8476a;--tgreen:#5dbb8d;--ink:#0d1b17;
+  --body:system-ui,"Roboto","Segoe UI",sans-serif;--display:system-ui,"Roboto","Segoe UI",sans-serif;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--night);color:var(--cream);font-family:var(--body);font-size:16px;overflow:auto}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+#app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:10px;padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tabs{display:flex;background:var(--panel);border-radius:10px;padding:3px}
+.tabs button{border:0;background:none;padding:7px 14px;border-radius:8px;font-weight:700;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--raise);color:var(--cream)}
+.tally{display:flex;gap:12px;font-weight:800;font-variant-numeric:tabular-nums;font-size:14px}
+.tally i{font-style:normal;display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.notice{background:var(--raise);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--muted)}
+.view{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+#verdict{flex:1;min-height:128px;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;gap:4px;background:var(--panel);color:var(--cream);overflow:hidden}
+#verdict[data-s="ok"]{background:var(--ok);color:var(--ink)}
+#verdict[data-s="warn"]{background:var(--warn);color:var(--ink)}
+#verdict[data-s="bad"]{background:var(--bad);color:#fff}
+#vHead{font-family:var(--display);font-weight:800;font-size:clamp(28px,9vw,42px);line-height:1.05}
+#vName{font-weight:800;font-size:clamp(19px,6vw,26px);overflow-wrap:anywhere}
+#vSub{font-size:14px;font-weight:700;opacity:.86}
+#vAct{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+#vAct button{border:2px solid currentColor;background:none;border-radius:8px;padding:6px 12px;font-weight:800;color:inherit}
+.entry{display:flex;gap:8px;align-items:stretch}
+.col{display:flex;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.col button{border:0;background:var(--panel);width:48px;font-family:var(--display);font-weight:800;font-size:20px;color:var(--muted)}
+.col button[aria-pressed="true"][data-c="R"]{background:var(--tred);color:#fff}
+.col button[aria-pressed="true"][data-c="G"]{background:var(--tgreen);color:var(--ink)}
+#disp{flex:1;min-width:0;background:var(--panel);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.14em;font-variant-numeric:tabular-nums;padding:6px}
+#pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+#pad button{border:0;background:var(--raise);border-radius:10px;padding:clamp(9px,1.9vh,15px) 0;font-family:var(--display);font-weight:700;font-size:23px}
+#pad button.alt{background:var(--panel);font-size:17px}
+#scanhint{}
+#scan{display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--cream);color:var(--ink);border-radius:10px;padding:12px;font-weight:800;position:relative}
+#photo{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+#guests{overflow:auto;gap:12px}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+.bar>*{min-width:0}
+input[type=search],input[type=text],textarea,select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+.btn{background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-weight:800;position:relative}
+.btn.main{background:var(--cream);color:var(--ink);border-color:var(--cream)}
+.btn.danger{color:#ffb3c0;border-color:var(--bad)}
+.btn input[type=file]{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+details{background:var(--panel);border-radius:10px;padding:10px 12px}
+summary{font-weight:800;cursor:pointer}
+details>div{display:flex;flex-direction:column;gap:9px;margin-top:10px}
+.hint{font-size:13px;color:var(--muted);line-height:1.45}
+code{font-size:13px;color:var(--cream)}
+ul#list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+#list li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line)}
+.tk{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;font-size:14px;padding:2px 6px;border-radius:5px;color:var(--ink)}
+.tk.R{background:var(--tred);color:#fff}.tk.G{background:var(--tgreen)}
+.who{min-width:0;overflow-wrap:anywhere;font-weight:700}
+.who small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+#list button{background:none;border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-weight:700;font-size:13px}
+.empty{color:var(--muted);text-align:center;padding:18px 8px}
+</style>
+</head><body>
+<div id="app">
+  <header>
+    <div class="tabs" role="tablist">
+      <button id="tabDoor" role="tab" aria-selected="true">Door</button>
+      <button id="tabGuests" role="tab" aria-selected="false">Guests</button>
+    </div>
+    <div class="tally"><span><i style="background:var(--tgreen)"></i><span id="tG">0</span></span><span><i style="background:var(--tred)"></i><span id="tR">0</span></span></div>
+  </header>
+  <div id="notice" class="notice" hidden></div>
+
+  <section id="door" class="view">
+    <div id="verdict" aria-live="assertive" data-s="idle">
+      <div id="vHead">Ready</div><div id="vName"></div><div id="vSub"></div><div id="vAct"></div>
+    </div>
+    <div class="entry">
+      <div class="col">
+        <button data-c="G" id="cG" aria-pressed="true" aria-label="Green ticket">G</button>
+        <button data-c="R" id="cR" aria-pressed="false" aria-label="Red ticket">R</button>
+      </div>
+      <div id="disp" aria-label="Ticket number">_ _ _</div>
+    </div>
+    <div id="pad"></div>
+    <p class="hint" id="scanhint" style="margin:0;text-align:center">Scanner ready: scan a ticket QR code, or type the number.</p>
+  </section>
+
+  <section id="guests" class="view" hidden>
+    <details id="imp"><summary>Add or update guest list</summary><div>
+      <p class="hint" style="margin:0">Upload a CSV or Excel file, or paste rows. Each row needs a ticket and a name, for example <code>R001, Name Surname</code>. For one buyer with several tickets, use <code>R001-R004, Name Surname</code>. You can upload again any time: names are added or updated, and check-ins are kept.</p>
+      <div class="bar"><label class="btn">Choose file<input id="file" type="file" accept=".csv,.txt,.xlsx,.xls"></label>
+        <select id="defCol" style="width:auto" aria-label="Colour for numbers without a letter"><option value="G">Plain numbers are green</option><option value="R">Plain numbers are red</option></select></div>
+      <label for="paste" class="hint">Or paste rows here</label>
+      <textarea id="paste" rows="4"></textarea>
+      <p id="prev" class="hint" style="margin:0"></p>
+      <div class="bar"><button id="doImport" class="btn main" disabled>Add / update list</button></div>
+    </div></details>
+    <input id="q" type="search" placeholder="Search name or ticket" aria-label="Search name or ticket">
+    <div class="bar">
+      <select id="flt" style="width:auto" aria-label="Filter"><option value="all">Everyone</option><option value="wait">Not arrived</option><option value="in">Arrived</option></select>
+      <button id="exp" class="btn">Export CSV</button>
+    </div>
+    <ul id="list"></ul>
+    <details><summary>Reset</summary><div>
+      <p class="hint" style="margin:0">These cannot be undone.</p>
+      <div class="bar"><button id="clrC" class="btn danger">Clear all check-ins</button><button id="clrG" class="btn danger">Delete guest list</button></div>
+    </div></details>
+  </section>
+</div>
+
+<script>
+const MAX=110, $=id=>document.getElementById(id);
+
+/* ---- parsing ---- */
+const COL={r:'R',g:'G','к':'R','п':'G',red:'R',green:'G','червоний':'R','зелений':'G'};
+function pad(n){return String(n).padStart(3,'0')}
+function parseCode(s,def){
+  const m=String(s).trim().toLowerCase().match(/^([a-zа-яіїє]*)[\s#№:-]*0*(\d{1,3})$/);
+  if(!m) return null;
+  const c=m[1]?COL[m[1]]:def; if(!c) return null;
+  return c+pad(m[2]||0);
+}
+function expand(s,def){            // "R001-R004", "1-4", "R7"
+  s=String(s).trim();
+  const r=s.match(/^(.*?\d)\s*(?:-|–|—|\bto\b)\s*([a-zа-яіїє]*[\s#№:-]*\d+)$/i);
+  if(r){const a=parseCode(r[1],def); if(a){const b=parseCode(r[2],a[0]);
+    if(b&&b[0]===a[0]&&+b.slice(1)>=+a.slice(1)&&+b.slice(1)-+a.slice(1)<MAX){
+      const o=[];for(let i=+a.slice(1);i<=+b.slice(1);i++)o.push(a[0]+pad(i));return o}}}
+  const c=parseCode(s,def); return c?[c]:null;
+}
+function splitLine(l){
+  const d=l.includes('\t')?'\t':(l.split(';').length>l.split(',').length?';':','), o=[];let f='',q=false;
+  for(let i=0;i<l.length;i++){const ch=l[i];
+    if(ch==='"'){if(q&&l[i+1]==='"'){f+='"';i++}else q=!q}
+    else if(ch===d&&!q){o.push(f);f=''} else f+=ch}
+  o.push(f);return o.map(x=>x.trim());
+}
+function parseRows(rows,def){      // rows: array of cell arrays
+  rows=rows.filter(r=>r.some(c=>String(c??'').trim()));
+  let ti=-1,ni=-1,ci=-1,start=0;
+  for(let r=0;r<Math.min(5,rows.length)&&start===0;r++){const h=rows[r].map(c=>String(c??'').trim().toLowerCase());
+    if(h.some(c=>c.length>40))continue;
+    let a=-1,n=-1,k=-1;h.forEach((c,i)=>{if(/^(ticket|number|квиток|номер|no\.?|№)/.test(c)&&a<0)a=i;else if(/^(name|ім.я|прізв|гост|покуп)/.test(c)&&n<0)n=i;else if(/^(colou?r|кол[іь]р)/.test(c)&&k<0)k=i});
+    if(a>=0||n>=0){ti=a;ni=n;ci=k;start=r+1}}
+  const seen=new Map(),bad=[],out=[];
+  for(let i=start;i<rows.length;i++){const r=rows[i].map(c=>String(c??'').trim());
+    let t=ti,n=ni;
+    if(t<0)t=r.findIndex(c=>expand(c,def));
+    if(n<0)n=r.findIndex((c,j)=>j!==t&&j!==ci&&c);
+    const col=ci>=0?COL[(r[ci]||'').toLowerCase()]:null;
+    const codes=t>=0?expand(r[t],col||def):null, name=n>=0?r[n]:'';
+    if(!codes){bad.push(`Row ${i+1}: no ticket number`);continue}
+    if(ni>=0&&(!name||/^example/i.test(name)))continue;
+    for(const code of codes){
+      const num=+code.slice(1);
+      if(num<1||num>MAX){bad.push(`Row ${i+1}: ${code} is outside 001–${pad(MAX)}`);continue}
+      if(seen.has(code)&&seen.get(code)!==name){bad.push(`Row ${i+1}: ${code} is already listed for ${seen.get(code)}`);continue}
+      if(!seen.has(code)){seen.set(code,name);out.push({code,name,colour:code[0]})}
+    }}
+  return {out,bad};
+}
+
+/* ---- store: this device only ---- */
+let guests=new Map(), checks=new Map();
+const LOCAL={guests:'door.guests',checkins:'door.checkins'};
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return {}}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{note('Could not save on this device. Storage may be full or blocked.');return false}}
+function persistLocal(){lsSet(LOCAL.guests,Object.fromEntries(guests));lsSet(LOCAL.checkins,Object.fromEntries(checks))}
+const store={
+  async putGuest(g){guests.set(g.code,g)},
+  async delGuest(c){guests.delete(c)},
+  async delCheck(c){checks.delete(c);persistLocal();render()},
+  async claim(code,body){if(checks.has(code))return checks.get(code);checks.set(code,body);persistLocal();render();return null}
+};
+function note(t){$('notice').textContent=t;$('notice').hidden=!t}
+/* ---- door ---- */
+let colour='G',digits='',armed=false,audio=null;
+function beep(ok){try{
+  audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+  const o=audio.createOscillator(),g=audio.createGain();o.connect(g);g.connect(audio.destination);
+  o.frequency.value=ok?1040:190;g.gain.value=.16;o.start();o.stop(audio.currentTime+(ok?.13:.42));
+  navigator.vibrate&&navigator.vibrate(ok?60:[120,60,120]);
+}catch{}}
+function say(s,head,name='',sub='',acts=[]){
+  const v=$('verdict');v.dataset.s=s;$('vHead').textContent=head;$('vName').textContent=name;$('vSub').textContent=sub;
+  const a=$('vAct');a.textContent='';
+  acts.forEach(([t,f])=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;a.append(b)});
+}
+const hhmm=iso=>{try{return new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}catch{return ''}};
+const label=c=>(c[0]==='R'?'Red ':'Green ')+c.slice(1);
+function showDisp(){$('disp').textContent=digits?digits.padEnd(3,'_').split('').join(' '):'_ _ _'}
+function setCol(c){colour=c;$('cG').setAttribute('aria-pressed',c==='G');$('cR').setAttribute('aria-pressed',c==='R')}
+function press(d){if(armed){digits='';armed=false}if(digits.length<3){digits+=d;showDisp()}if(digits.length===3)submit()}
+function back(){if(armed){digits='';armed=false}digits=digits.slice(0,-1);showDisp()}
+function submit(){if(!digits)return;armed=true;check(colour+pad(digits))}
+let working=false;
+let lastScan={code:'',t:0};
+async function check(code,force=false){
+  if(working)return;
+  const now=Date.now();if(!force&&code===lastScan.code&&now-lastScan.t<3000)return;lastScan={code,t:now};
+  working=true;
+  try{
+    const num=+code.slice(1),g=guests.get(code),hasList=guests.size>0;
+    if(num<1||num>MAX){beep(0);say('bad','Invalid ticket',label(code),`Ticket numbers run from 001 to ${pad(MAX)}.`);return}
+    if(hasList&&!g&&!force){beep(0);say('bad','Not on the list',label(code),'Check the name under Guests, or let them in anyway.',[['Admit anyway',()=>check(code,true)]]);return}
+    const seen=checks.get(code);
+    if(seen){beep(0);say('warn','Already used',seen.name||g?.name||label(code),`${label(code)}, checked in at ${hhmm(seen.at)}`,[['Undo that check-in',()=>undo(code)]]);return}
+    say('idle','Checking…',label(code));
+    const body={code,name:g?.name||'',at:new Date().toISOString(),override:!!(force&&!g)};
+    const prior=await store.claim(code,body);
+    if(prior){beep(0);say('warn',prior.busy?'Checked at another door':'Already used',prior.name||g?.name||label(code),`${label(code)}, ${prior.busy?'just now':'checked in at '+hhmm(prior.at)}`);return}
+    beep(1);say('ok','Welcome',g?.name||'',label(code)+(body.override?' · not on the list':''),[['Undo',()=>undo(code)]]);
+  }catch(e){beep(0);say('bad','Not saved',label(code),'The check-in did not save. Check the connection and try again.',[['Try again',()=>check(code,force)]])}
+  finally{working=false}
+}
+async function undo(code){try{await store.delCheck(code);say('idle','Undone',label(code),'This ticket can be used again.')}catch{say('bad','Not saved',label(code),'The undo did not save. Try again.')}}
+
+/* ---- guests view ---- */
+let pending=[];
+function render(){
+  const count=c=>[...checks.keys()].filter(k=>k[0]===c).length, tot=c=>[...guests.keys()].filter(k=>k[0]===c).length;
+  $('tG').textContent=count('G')+(guests.size?' / '+tot('G'):'');$('tR').textContent=count('R')+(guests.size?' / '+tot('R'):'');
+  if(!$('guests').hidden)renderList();
+  if($('verdict').dataset.s==='idle'&&$('vHead').textContent==='Ready')$('vSub').textContent=guests.size?`${guests.size} tickets on the list`:'No guest list yet: each ticket 001–110 is admitted once.';
+}
+function renderList(){
+  const q=$('q').value.trim().toLowerCase(),f=$('flt').value,ul=$('list');ul.textContent='';
+  const all=new Map(guests);checks.forEach((v,k)=>{if(!all.has(k))all.set(k,{code:k,name:v.name||''})});
+  const rows=[...all.values()].filter(g=>{const i=checks.has(g.code);
+    return (f==='all'||(f==='in'?i:!i))&&(!q||g.code.toLowerCase().includes(q)||(g.name||'').toLowerCase().includes(q)||label(g.code).toLowerCase().includes(q))})
+    .sort((a,b)=>a.code.localeCompare(b.code));
+  if(!rows.length){const li=document.createElement('li');li.className='empty';li.style.display='block';
+    li.textContent=all.size?'Nobody matches this search.':'No guests yet. Use Add guest list above to bring in names and ticket numbers.';ul.append(li);return}
+  rows.forEach(g=>{const c=checks.get(g.code),li=document.createElement('li');
+    const t=document.createElement('span');t.className='tk '+g.code[0];t.textContent=g.code;
+    const w=document.createElement('div');w.className='who';w.textContent=g.name||'No name';
+    if(c){const s=document.createElement('small');s.textContent='Arrived '+hhmm(c.at)+(c.override?' · not on the list':'');w.append(s)}
+    const b=document.createElement('button');b.textContent=c?'Undo':'Check in';b.onclick=()=>c?undo(g.code):(show('door'),check(g.code,true));
+    li.append(t,w,b);ul.append(li)});
+}
+function show(v){const d=v==='door';$('door').hidden=!d;$('guests').hidden=d;$('tabDoor').setAttribute('aria-selected',d);$('tabGuests').setAttribute('aria-selected',!d);render()}
+function preview(rows){
+  const {out,bad}=parseRows(rows,$('defCol').value);pending=out;$('doImport').disabled=!out.length;
+  const r=out.filter(o=>o.colour==='R').length,g=out.length-r;
+  $('prev').textContent=(rows.length?`Ready to add ${out.length} tickets (${g} green, ${r} red).`:'')+(bad.length?` ${bad.length} rows skipped: ${bad.slice(0,4).join('; ')}${bad.length>4?'; …':''}`:'');
+}
+let lastRows=[];
+function fromPaste(){lastRows=$('paste').value.split(/\r?\n/).map(splitLine);preview($('paste').value.trim()?lastRows:[])}
+function loadXlsx(){return window.XLSX?Promise.resolve():new Promise((y,n)=>{const s=document.createElement('script');s.src='xlsx.full.min.js';s.onload=y;s.onerror=n;document.head.append(s)})}
+async function readFile(f){
+  try{
+    if(/\.xlsx?$/i.test(f.name)){await loadXlsx();const wb=XLSX.read(await f.arrayBuffer());lastRows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''})}
+    else lastRows=(await f.text()).replace(/^﻿/,'').split(/\r?\n/).map(splitLine);
+    preview(lastRows);
+  }catch{$('prev').textContent='That file could not be read. Save it as CSV and try again.';$('doImport').disabled=true}
+}
+async function pool(items,fn,onDone){let i=0,done=0,fail=0;await Promise.all([0,1,2,3].map(async()=>{while(i<items.length){const it=items[i++];
+  try{await fn(it)}catch{await new Promise(r=>setTimeout(r,400+Math.random()*400));try{await fn(it)}catch{fail++}}
+  onDone(++done)}}));return fail}
+function armConfirm(btn,fn){const txt=btn.textContent;btn.onclick=()=>{if(btn.dataset.a){delete btn.dataset.a;btn.textContent=txt;fn()}else{btn.dataset.a=1;btn.textContent='Tap again to confirm';setTimeout(()=>{delete btn.dataset.a;btn.textContent=txt},4000)}}}
+
+/* ---- wiring ---- */
+[1,2,3,4,5,6,7,8,9].forEach(n=>addKey(n,()=>press(String(n))));
+addKey('⌫',back,'alt','Delete');addKey(0,()=>press('0'));addKey('OK',submit,'alt');
+function addKey(t,f,cls,al){const b=document.createElement('button');b.textContent=t;if(cls)b.className=cls;if(al)b.setAttribute('aria-label',al);b.onclick=f;$('pad').append(b)}
+$('cG').onclick=()=>setCol('G');$('cR').onclick=()=>setCol('R');
+$('tabDoor').onclick=()=>show('door');$('tabGuests').onclick=()=>show('guests');
+document.addEventListener('keydown',e=>{            // USB/Bluetooth scanners type the code, then Enter
+  if($('door').hidden||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.ctrlKey||e.metaKey)return;
+  const k=e.key.toLowerCase();
+  if(/^\d$/.test(k))press(k);else if(COL[k]){setCol(COL[k]);if(armed){digits='';armed=false;showDisp()}}
+  else if(k==='backspace')back();else if(k==='enter'&&!armed){e.preventDefault();submit()}
+});
+$('paste').oninput=fromPaste;$('defCol').onchange=()=>preview(lastRows);
+$('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)readFile(f)};
+$('doImport').onclick=async()=>{const b=$('doImport'),items=pending.slice();b.disabled=true;
+  const fail=await pool(items,store.putGuest,()=>{});persistLocal();
+  $('prev').textContent=fail?`${items.length-fail} added. ${fail} failed; add the list again to finish.`:`${items.length} tickets added.`;
+  pending=[];$('paste').value='';if(!fail)$('imp').open=false;render()};
+$('q').oninput=renderList;$('flt').onchange=renderList;
+$('exp').onclick=()=>{
+  const esc=s=>'"'+String(s??'').replace(/"/g,'""')+'"',all=new Map(guests);checks.forEach((v,k)=>{if(!all.has(k))all.set(k,{code:k,name:v.name})});
+  const csv='\ufeffticket,name,checked_in,not_on_list\n'+[...all.values()].sort((a,b)=>a.code.localeCompare(b.code)).map(g=>{const c=checks.get(g.code);return [g.code,g.name,c?.at||'',c?.override?'yes':''].map(esc).join(',')}).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='door-checkins-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.csv';document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)};
+armConfirm($('clrC'),async()=>{await pool([...checks.keys()],store.delCheck,()=>{});render()});
+armConfirm($('clrG'),async()=>{guests.clear();persistLocal();render()});
+try{navigator.wakeLock?.request('screen').catch(()=>{})}catch{}
+
+/* ---- start ---- */
+guests=new Map(Object.entries(lsGet(LOCAL.guests)));checks=new Map(Object.entries(lsGet(LOCAL.checkins)));
+render();
+try{navigator.storage?.persist?.()}catch{}
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)try{navigator.wakeLock?.request('screen').catch(()=>{})}catch{}});
+</script>
+</body></html>
