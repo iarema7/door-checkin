@@ -36,6 +36,10 @@ header{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 #verdict[data-s="warn"]{background:var(--warn);color:var(--ink)}
 #verdict[data-s="bad"]{background:var(--bad);color:#fff}
 #vHead{font-family:var(--display);font-weight:800;font-size:clamp(28px,9vw,42px);line-height:1.05}
+.vrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#vTag{font-family:var(--display);font-weight:800;font-size:clamp(24px,7vw,36px);line-height:1;letter-spacing:.04em;padding:6px 12px;border-radius:9px;border:3px solid #fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+#vTag[data-c="R"]{background:var(--tred);color:#fff}
+#vTag[data-c="G"]{background:var(--tgreen);color:var(--ink)}
 #vName{font-weight:800;font-size:clamp(19px,6vw,26px);overflow-wrap:anywhere}
 #vSub{font-size:14px;font-weight:700;opacity:.86}
 #vAct{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
@@ -45,6 +49,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 .col button{border:0;background:var(--panel);width:48px;font-family:var(--display);font-weight:800;font-size:20px;color:var(--muted)}
 .col button[aria-pressed="true"][data-c="R"]{background:var(--tred);color:#fff}
 .col button[aria-pressed="true"][data-c="G"]{background:var(--tgreen);color:var(--ink)}
+#disp[data-c="R"]{background:var(--tred);color:#fff}
+#disp[data-c="G"]{background:var(--tgreen);color:var(--ink)}
 #disp{flex:1;min-width:0;background:var(--panel);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.14em;font-variant-numeric:tabular-nums;padding:6px}
 #pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 #pad button{border:0;background:var(--raise);border-radius:10px;padding:clamp(9px,1.9vh,15px) 0;font-family:var(--display);font-weight:700;font-size:23px}
@@ -110,14 +116,14 @@ ul#list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
   <section id="door" class="view">
    <div class="dpanel">
     <div id="verdict" aria-live="assertive" data-s="idle">
-      <div id="vHead">Ready</div><div id="vName"></div><div id="vSub"></div><div id="vAct"></div>
+      <div class="vrow"><div id="vHead">Ready</div><span id="vTag" hidden></span></div><div id="vName"></div><div id="vSub"></div><div id="vAct"></div>
     </div>
     <div class="entry">
       <div class="col">
         <button data-c="G" id="cG" aria-pressed="true" aria-label="Green ticket">G</button>
         <button data-c="R" id="cR" aria-pressed="false" aria-label="Red ticket">R</button>
       </div>
-      <div id="disp" aria-label="Ticket number">_ _ _</div>
+      <div id="disp" data-c="G" aria-label="Ticket number">_ _ _</div>
     </div>
     <div id="pad"></div>
     <p class="hint" id="scanhint" style="margin:0;text-align:center">Scanner ready: scan a ticket QR code, or type the number.</p>
@@ -227,7 +233,8 @@ function beep(ok){try{
   o.frequency.value=ok?1040:190;g.gain.value=.16;o.start();o.stop(audio.currentTime+(ok?.13:.42));
   navigator.vibrate&&navigator.vibrate(ok?60:[120,60,120]);
 }catch{}}
-function say(s,head,name='',sub='',acts=[]){
+function say(s,head,name='',sub='',acts=[],code=''){
+  const tg=$('vTag');tg.hidden=!code;if(code){tg.dataset.c=code[0];tg.textContent=(code[0]==='R'?'RED ':'GREEN ')+code.slice(1)}
   const v=$('verdict');v.dataset.s=s;$('vHead').textContent=head;$('vName').textContent=name;$('vSub').textContent=sub;
   const a=$('vAct');a.textContent='';
   acts.forEach(([t,f])=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;a.append(b)});
@@ -235,7 +242,7 @@ function say(s,head,name='',sub='',acts=[]){
 const hhmm=iso=>{try{return new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}catch{return ''}};
 const label=c=>(c[0]==='R'?'Red ':'Green ')+c.slice(1);
 function showDisp(){$('disp').textContent=digits?digits.padEnd(3,'_').split('').join(' '):'_ _ _'}
-function setCol(c){colour=c;$('cG').setAttribute('aria-pressed',c==='G');$('cR').setAttribute('aria-pressed',c==='R')}
+function setCol(c){colour=c;$('disp').dataset.c=c;$('cG').setAttribute('aria-pressed',c==='G');$('cR').setAttribute('aria-pressed',c==='R')}
 function press(d){if(armed){digits='';armed=false}if(digits.length<3){digits+=d;showDisp()}if(digits.length===3)submit()}
 function back(){if(armed){digits='';armed=false}digits=digits.slice(0,-1);showDisp()}
 function submit(){if(!digits)return;armed=true;check(colour+pad(digits))}
@@ -248,19 +255,19 @@ async function check(code,force=false){
   working=true;
   try{
     const num=+code.slice(1),g=guests.get(code),hasList=guests.size>0;
-    if(num<1||num>MAX){beep(0);say('bad','Invalid ticket',label(code),`Ticket numbers run from 001 to ${pad(MAX)}.`);return}
-    if(hasList&&!g&&!force){beep(0);say('bad','Not on the list',label(code),'Check the name under Guests, or let them in anyway.',[['Admit anyway',()=>check(code,true)]]);return}
+    if(num<1||num>MAX){beep(0);say('bad','Invalid ticket','',`Ticket numbers run from 001 to ${pad(MAX)}.`,[],code);return}
+    if(hasList&&!g&&!force){beep(0);say('bad','Not on the list','','Check the name under Guests, or let them in anyway.',[['Admit anyway',()=>check(code,true)]],code);return}
     const seen=checks.get(code);
-    if(seen){beep(0);say('warn','Already used',seen.name||g?.name||label(code),`${label(code)}, checked in at ${hhmm(seen.at)}`,[['Undo that check-in',()=>undo(code)]]);return}
-    say('idle','Checking…',label(code));
+    if(seen){beep(0);say('warn','Already used',seen.name||g?.name||'',`Checked in at ${hhmm(seen.at)}`,[['Undo that check-in',()=>undo(code)]],code);return}
+    say('idle','Checking…','','',[],code);
     const body={code,name:g?.name||'',at:new Date().toISOString(),override:!!(force&&!g)};
     const prior=await store.claim(code,body);
-    if(prior){beep(0);say('warn',prior.busy?'Checked at another door':'Already used',prior.name||g?.name||label(code),`${label(code)}, ${prior.busy?'just now':'checked in at '+hhmm(prior.at)}`);return}
-    beep(1);say('ok','Welcome',g?.name||'',label(code)+(body.override?' · not on the list':''),[['Undo',()=>undo(code)]]);
-  }catch(e){beep(0);say('bad','Not saved',label(code),'The check-in did not save. Check the connection and try again.',[['Try again',()=>check(code,force)]])}
+    if(prior){beep(0);say('warn',prior.busy?'Checked at another door':'Already used',prior.name||g?.name||'',prior.busy?'Just now':'Checked in at '+hhmm(prior.at),[],code);return}
+    beep(1);say('ok','Welcome',g?.name||'',body.override?'Not on the list':'',[['Undo',()=>undo(code)]],code);
+  }catch(e){beep(0);say('bad','Not saved','','The check-in did not save. Try again.',[['Try again',()=>check(code,force)]],code)}
   finally{working=false}
 }
-async function undo(code){try{await store.delCheck(code);say('idle','Undone',label(code),'This ticket can be used again.')}catch{say('bad','Not saved',label(code),'The undo did not save. Try again.')}}
+async function undo(code){try{await store.delCheck(code);say('idle','Undone','','This ticket can be used again.',[],code)}catch{say('bad','Not saved','','The undo did not save. Try again.',[],code)}}
 
 /* ---- guests view ---- */
 let pending=[];
