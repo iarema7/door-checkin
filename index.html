@@ -12,7 +12,7 @@
   color-scheme:dark;
   --night:#10211c;--panel:#18302a;--raise:#21403a;--line:#315249;
   --cream:#f6eddc;--muted:#a9bdb3;--ok:#35c98c;--warn:#f2ad33;--bad:#e3314f;
-  --tred:#e8476a;--tgreen:#5dbb8d;--ink:#0d1b17;
+  --tred:#e8476a;--yellow:#f5d02e;--tgreen:#5dbb8d;--ink:#0d1b17;
   --body:system-ui,"Roboto","Segoe UI",sans-serif;--display:system-ui,"Roboto","Segoe UI",sans-serif;
 }
 [hidden]{display:none!important}
@@ -53,7 +53,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 #disp[data-c="G"]{background:var(--tgreen);color:var(--ink)}
 #disp{flex:1;min-width:0;background:var(--panel);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.14em;font-variant-numeric:tabular-nums;padding:6px}
 #pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-#pad button{border:0;background:var(--raise);border-radius:10px;padding:clamp(9px,1.9vh,15px) 0;font-family:var(--display);font-weight:700;font-size:23px}
+#pad button{border:1mm solid var(--yellow);background:var(--raise);border-radius:10px;padding:clamp(9px,1.9vh,15px) 0;font-family:var(--display);font-weight:700;font-size:23px}
 #pad button.alt{background:var(--panel);font-size:17px}
 #scanhint{}
 .dpanel{display:flex;flex-direction:column;gap:10px;min-height:0}
